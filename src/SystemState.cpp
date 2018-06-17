@@ -6,189 +6,158 @@
 namespace cnbiros {
 	namespace control {
 
-SystemState::SystemState(void) : p_nh_("~") {
+SystemState::SystemState(void)  {
+	this->id_ = -1;
+	this->prev_id_ = -1;
 
+	this->label_ = "Unset";
+	this->prev_label_ = "Unset";
 
-
-	this->srv_joystick_control_   = this->p_nh_.advertiseService("joystick_control", &SystemState::on_joystick_control, this);
-	this->srv_navigation_control_ = this->p_nh_.advertiseService("navigation_control", &SystemState::on_navigation_control, this);
-	this->srv_navigation_start_   = this->p_nh_.advertiseService("navigation_start", &SystemState::on_navigation_start, this);
-	this->srv_navigation_stop_    = this->p_nh_.advertiseService("navigation_stop", &SystemState::on_navigation_stop, this);
-
-
-	this->cli_joystick_enable_    = this->nh_.serviceClient<std_srvs::Empty>("/joy_filter_control/joystick_enable");
-	this->cli_joystick_disable_   = this->nh_.serviceClient<std_srvs::Empty>("/joy_filter_control/joystick_disable");
-	this->cli_navigation_enable_  = this->nh_.serviceClient<std_srvs::Empty>("/shared_dynamics/navigation_enable");
-	this->cli_navigation_disable_ = this->nh_.serviceClient<std_srvs::Empty>("/shared_dynamics/navigation_disable");
-	this->cli_navigation_start_   = this->nh_.serviceClient<std_srvs::Empty>("/shared_dynamics/navigation_start");
-	this->cli_navigation_stop_    = this->nh_.serviceClient<std_srvs::Empty>("/shared_dynamics/navigation_stop");
-
-
-	this->state_ = State::Navigation;
 }
 
 SystemState::~SystemState(void) {}
 
-bool SystemState::IsState(State state) {
-
-	if(this->state_ == state)
-		return true;
-
-	return false;
+bool SystemState::Is(int id) {
+	return this->id_ == id ? true : false;
 }
 
-bool SystemState::on_joystick_control(std_srvs::Empty::Request& req,
-									   std_srvs::Empty::Response& res) {
+bool SystemState::Is(std::string label) {
 
-	if(this->IsState(State::Joystick))
-			return true;
-
-	// Stopping navigation
-	this->request_navigation_stop();
-
-	// Disable navigation
-	this->request_navigation_disable();
-
-	// Enable joystick
-	this->request_joystick_enable();
-
-	this->state_ = State::Joystick;
-
-	return true;
+	bool result = false;
+	if(this->label_.compare(label) == 0)
+		result = true;
+	return result;
 }
 
-bool SystemState::on_navigation_control(std_srvs::Empty::Request& req,
-											  std_srvs::Empty::Response& res) {
 
-	bool execute = true;
+bool SystemState::Add(int id, std::string label) {
 
-	switch(this->state_) {
-		case State::Navigation:
-		case State::Running:
-		case State::Stopped:
-			execute = false;
+	bool is_duplicated = false;
+	bool result = false;
+
+	// Search for entry with this id in the dictionnary
+	auto it = this->dictionary_.find(id);
+
+	// Check if already exists
+	if(it != this->dictionary_.end() )
+		return false;
+
+	// If does not exists, iterate on labels
+
+	// Check for uniquness of the label
+	for(auto it=this->dictionary_.begin(); it != this->dictionary_.end(); ++it) {
+		if(it->second.compare(label) == 0) { // if found
+			is_duplicated = true;
 			break;
+		}
 	}
 
-	if(execute == false)
-		return true;
-
-	// Disable joystick
-	this->request_joystick_disable();
-
-	// Enable navigation
-	this->request_navigation_enable();
-
-	// Start navigation
-	this->request_navigation_start();
-	
-	this->state_ = State::Running;
-	
-	return true;
-}
-
-bool SystemState::on_navigation_stop(std_srvs::Empty::Request& req,
-									  std_srvs::Empty::Response& res) {
-
-	if(this->IsState(State::Running) == false)
-		return true;
-
-	// Stopping navigation
-	this->request_navigation_stop();
-
-	this->state_ = State::Stopped;
-	
-	return true;
-}
-
-bool SystemState::on_navigation_start(std_srvs::Empty::Request& req,
-									  std_srvs::Empty::Response& res) {
-
-	bool execute = true;
-
-	switch(this->state_) {
-		case State::Idle:
-		case State::Joystick:
-		case State::Running:
-			execute = false;
-			break;
+	if (is_duplicated == false) {
+		auto ret = this->dictionary_.insert(std::pair<int, std::string>(id, label));
+		result = ret.second;
 	}
 
-	if(execute == false)
-		return true;
+	return result;
+}
 
-	// Stopping navigation
-	this->request_navigation_start();
-	
-	this->state_ = State::Running;
+bool SystemState::AddTransition(std::string from, std::string to) {
+
+	auto ret = this->transitions_.insert(std::pair<std::string, std::string>(from, to));
 
 	return true;
+
 }
 
+bool SystemState::Change(std::string next_state) {
 
-void SystemState::request_navigation_stop(void) {
-	
-	std_srvs::Empty srv;
+	bool allowed = false;
+	bool result  = false;
+	auto ret = this->transitions_.equal_range(this->label_);
 
-	if(this->cli_navigation_stop_.call(srv))
-		ROS_WARN("[SystemState] - Navigation requested to stop");
-	else
-		ROS_ERROR("[SystemState] - Failed to request navigation to stop");
+	for(auto it = ret.first; it !=ret.second; ++it) {
+		
+		if(it->second.compare(next_state) == 0) {
+			allowed = true;
+			break;
+		}
+	}
+
+	if( allowed == true ) {
+		this->Set(next_state);
+		result = true;
+	}
+
+	return result;
 }
 
-void SystemState::request_navigation_start(void) {
-	
-	std_srvs::Empty srv;
+bool SystemState::Set(int id) {
 
+	bool ret = false;
+	auto it = this->dictionary_.find(id);
 
-	if(this->cli_navigation_start_.call(srv))
-		ROS_WARN("[SystemState] - Navigation requested to start");
-	else
-		ROS_ERROR("[SystemState] - Failed to request navigation to start");
+	if( it != this->dictionary_.end() ) {
+		this->prev_id_		= this->id_;
+		this->prev_label_	= this->label_;
+		this->id_			= it->first;
+		this->label_		= it->second;
+		ret = true;
+	}
+	return ret;
 }
 
-void SystemState::request_navigation_enable(void) {
-	
-	std_srvs::Empty srv;
+bool SystemState::Set(std::string label) {
 
+	bool found  = false;
+	bool result = false;
+	int id;
 
-	if(this->cli_navigation_enable_.call(srv))
-		ROS_WARN("[SystemState] - Navigation requested to be enabled");
-	else
-		ROS_ERROR("[SystemState] - Failed to request navigation to be enabled");
+	for(auto it=this->dictionary_.begin(); it != this->dictionary_.end(); ++it) {
+		if(it->second.compare(label) == 0) { // if found
+			found = true;
+			id = it->first;
+			break;
+		}
+	}
+
+	if(found == true) {
+		result = this->Set(id);
+	}
+
+	return result;
 }
 
-void SystemState::request_navigation_disable(void) {
-	
-	std_srvs::Empty srv;
-
-
-	if(this->cli_navigation_disable_.call(srv))
-		ROS_WARN("[SystemState] - Navigation requested to be disabled");
-	else
-		ROS_ERROR("[SystemState] - Failed to request navigation to be disabled");
+unsigned int SystemState::GetSize(void) {
+	return this->dictionary_.size();
 }
 
-void SystemState::request_joystick_enable(void) {
-	
-	std_srvs::Empty srv;
-
-
-	if(this->cli_joystick_enable_.call(srv))
-		ROS_WARN("[SystemState] - Joystick requested to be enabled");
-	else
-		ROS_ERROR("[SystemState] - Failed to request joystick to be enabled");
+int SystemState::GetId(void) {
+	return this->id_;
 }
 
-void SystemState::request_joystick_disable(void) {
-	
-	std_srvs::Empty srv;
+std::string SystemState::GetLabel(void) {
+	return this->label_;
+}
 
+int SystemState::GetPrevId(void) {
+	return this->prev_id_;
+}
 
-	if(this->cli_joystick_disable_.call(srv))
-		ROS_WARN("[SystemState] - Joystick requested to be disabled");
-	else
-		ROS_ERROR("[SystemState] - Failed to request joystick to be disabled");
+std::string SystemState::GetPrevLabel(void) {
+	return this->prev_label_;
+}
+
+void SystemState::DumpStates(void) {
+
+	printf("[SystemState] States dictionary:\n");
+	for(auto it=this->dictionary_.begin(); it != this->dictionary_.end(); ++it) 
+		printf("		- %s\n", it->second.c_str());
+}
+
+void SystemState::DumpTransitions(void) {
+
+	printf("[SystemState] Transitions dictionary:\n");
+	for(auto it=this->transitions_.begin(); it != this->transitions_.end(); ++it) 
+		printf("		- %s => %s\n", it->first.c_str(), it->second.c_str());
 }
 
 	}

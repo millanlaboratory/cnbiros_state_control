@@ -2,14 +2,14 @@
 #define CNBIROS_STATE_CONTROL_SYSTEMSTATE_HPP
 
 
-// Ros includes
-#include <ros/ros.h>
-#include <std_srvs/Empty.h>
+// System includes
+#include <string>
+#include <unordered_map>
+#include <map>
 
 namespace cnbiros {
 	namespace control {
 
-enum class State {Idle, Joystick, Navigation, Stopped, Running};
 
 class SystemState {
 
@@ -18,45 +18,37 @@ class SystemState {
 		SystemState(void);
 		virtual ~SystemState(void);
 
-		bool configure(void);
+		bool Add(int id, std::string label);
+		bool Set(int id);
+		bool Set(std::string label);
+		bool Is(int id);
+		bool Is(std::string label);
+		unsigned int GetSize(void);
+		
+		int GetId(void);
+		std::string GetLabel(void);
+		
+		int GetPrevId(void);
+		std::string GetPrevLabel(void);
 
-		bool IsState(State state);
-		void Run(void);
+		bool AddTransition(std::string from, std::string to);
+		bool Change(std::string next_state);
+
+		void DumpStates(void);
+		void DumpTransitions(void);
 
 	private:
-		bool on_joystick_control(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
-		bool on_navigation_control(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
-		bool on_navigation_stop(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
-		bool on_navigation_start(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
-
-		void request_navigation_stop(void);
-		void request_navigation_start(void);
-		void request_navigation_enable(void);
-		void request_navigation_disable(void);
-		void request_joystick_enable(void);
-		void request_joystick_disable(void);
-
-	private:
-		ros::NodeHandle	nh_;
-		ros::NodeHandle	p_nh_;
-
-		ros::ServiceServer	srv_joystick_control_;
-		ros::ServiceServer	srv_navigation_control_;
-		ros::ServiceServer	srv_navigation_start_;
-		ros::ServiceServer	srv_navigation_stop_;
-
-		ros::ServiceClient	cli_joystick_enable_;
-		ros::ServiceClient	cli_joystick_disable_;
-		ros::ServiceClient	cli_navigation_enable_;
-		ros::ServiceClient	cli_navigation_disable_;
-		ros::ServiceClient	cli_navigation_start_;
-		ros::ServiceClient	cli_navigation_stop_;
-
-		State	state_;
+		int			id_;
+		std::string label_;
+		
+		int			prev_id_;
+		std::string	prev_label_;
+		
+		std::unordered_map<int, std::string> dictionary_;
+		std::multimap<std::string, std::string> transitions_;
 
 };
-
 
 	}
 }

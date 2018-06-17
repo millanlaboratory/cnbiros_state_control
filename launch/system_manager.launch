@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Running options -->
+	<arg name="params_system_manager"		default="$(find cnbiros_state_control)/params/params_system_manager.yaml" />
+
+	<!-- Arguments declaration -->
+	<arg name="tid_pipes"   default="[/bus]"/>
+
+
+	<rosparam subst_value="True" file="$(arg params_system_manager)" command="load" />
+
+	<!-- System manager -->
+	<node pkg="cnbiros_state_control" type="test_manager" name="system_manager" output="screen" />
+
+	<!-- BCI interface -->
+	<node pkg="cnbiros_bci" type="rostid" name="rostid" output="screen" >
+		<rosparam param="tid_pipes"  subst_value="True">$(arg tid_pipes)</rosparam>
+	</node>
+
+	<!-- BCI manager -->
+	<node pkg="cnbiros_state_control" type="bci_handler" name="bci_handler" output="screen" />
+
+	<!-- Joystick manager -->
+	<node pkg="cnbiros_state_control" type="joystick_handler" name="joystick_handler" output="screen" />
+
+	<!-- Navigation manager -->
+	<node pkg="cnbiros_state_control" type="navigation_handler" name="navigation_handler" output="screen" />
+	
+
+</launch>
