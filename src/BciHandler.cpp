@@ -94,7 +94,7 @@ void BciHandler::on_received_state(const cnbiros_state_control::SystemStateMsg& 
 	if( it != this->events_map_.end() ) {
 
 		tid.header.stamp = ros::Time::now();
-		tid.pipe  = "/bus";
+		tid.pipe  = "/dev";
 		std::istringstream(it->second) >> std::hex >> tid.event;
 		this->pub_.publish(tid);
 	}
