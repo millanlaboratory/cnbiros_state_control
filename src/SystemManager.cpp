@@ -44,7 +44,7 @@ bool SystemManager::on_received_service(std_srvs::Empty::Request& req, std_srvs:
 
 	if(this->state_.Change(caller) == false) {
 		ROS_WARN("[SystemManager] - Transition %s=>%s not allowed", this->state_.GetLabel().c_str(), caller.c_str());
-		return false;
+		return true;
 	}
 
 	if(SystemStateConverter::ToMessage(this->state_, msg))
