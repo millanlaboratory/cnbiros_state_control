@@ -2,7 +2,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 cmake_minimum_required(VERSION 2.8.3)
 project(cnbiros_state_control)
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation
-	cnbiros_bci)
+	cnbiros_bci cnbiros_tobi_msgs)
 
 SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 include_directories(include ${catkin_INCLUDE_DIRS})
