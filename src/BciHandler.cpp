@@ -16,7 +16,7 @@ BciHandler::BciHandler(void) : p_nh_("~") {
 	this->subctr_ = this->nh_.subscribe(this->ctrtopic_, 1, &BciHandler::on_received_state, this);
 
 	// Initialize publisher
-	this->pub_ = this->nh_.advertise<cnbiros_bci::TidMessage>(this->pubtopic_, 1);
+	this->pub_ = this->nh_.advertise<cnbiros_tobi_msgs::TidMessage>(this->pubtopic_, 1);
 
 	// Initialize services
 	for(auto it=this->services_names_.begin(); it!=this->services_names_.end(); ++it) {
@@ -64,7 +64,7 @@ bool BciHandler::configure(void) {
 	return true;
 }
 
-void BciHandler::on_received_tid(const cnbiros_bci::TidMessage& msg) {
+void BciHandler::on_received_tid(const cnbiros_tobi_msgs::TidMessage& msg) {
 
 	std_srvs::Empty srv;
 	std::stringstream sevent;
@@ -87,7 +87,7 @@ void BciHandler::on_received_tid(const cnbiros_bci::TidMessage& msg) {
 
 void BciHandler::on_received_state(const cnbiros_state_control::SystemStateMsg& msg) {
 
-	cnbiros_bci::TidMessage tid;
+	cnbiros_tobi_msgs::TidMessage tid;
 	auto it = this->events_map_.find(msg.label);
 
 	

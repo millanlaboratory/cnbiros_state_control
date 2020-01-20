@@ -12,7 +12,7 @@
 #include <XmlRpcValue.h>
 
 // Package includes
-#include <cnbiros_bci/TidMessage.h>
+#include <cnbiros_tobi_msgs/TidMessage.h>
 #include "cnbiros_state_control/SystemStateMsg.h"
 
 namespace cnbiros {
@@ -27,7 +27,7 @@ class BciHandler {
 		bool configure(void);
 
 	private:
-		void on_received_tid(const cnbiros_bci::TidMessage& msg);
+		void on_received_tid(const cnbiros_tobi_msgs::TidMessage& msg);
 		void on_received_state(const cnbiros_state_control::SystemStateMsg& msg);
 
 
